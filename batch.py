@@ -1,6 +1,8 @@
 from typing import Dict
 
 import io
+
+import datetime
 import yaml
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
@@ -10,8 +12,9 @@ from todoist_achievements.loader import TodoistActivityLoader
 
 
 def run(config: Dict):
-    dates = TodoistActivityLoader.load(config["todoist-token"])
-    df = DateListConverter.convert(dates)
+    time_difference = datetime.timedelta(hours=config["time-difference"])
+    dates = TodoistActivityLoader.load(config["todoist-token"], time_difference)
+    df = DateListConverter.convert(dates, time_difference)
     ax = df.plot(kind="bar", x=df.index)
     tick_labels = [item.strftime("%b %d") for item in df.index]
     ax.xaxis.set_major_formatter(ticker.FixedFormatter(tick_labels))
@@ -21,8 +24,10 @@ def run(config: Dict):
     plt.savefig(buf, format="png")
     buf.seek(0)
 
+    title = datetime.datetime.now() + time_difference
+    title = title.strftime("Todoist %Y-%m-%d")
     client = SlackClient(config["slack-token"])
-    client.api_call("files.upload", channels=config["slack-channel"], file=buf)
+    client.api_call("files.upload", channels=config["slack-channel"], file=buf, title=title)
     buf.close()
 
 
